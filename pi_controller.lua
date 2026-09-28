@@ -15,10 +15,8 @@
 -- one setpoint, and one regulatory objective, patched to different but
 -- related actuators so a single goal can act at several causal depths.
 --
--- INPUT-MAPPING NOTE: CLAUDE.md is internally inconsistent about which
--- jack is which. Per the performer's wiring, IN1 = setpoint and
--- IN2 = measurement (the top-of-file convention). To swap in software
--- instead of rewiring, set swap_inputs = true below.
+-- To swap the input mapping in software instead of rewiring, set
+-- swap_inputs = true below.
 
 ---------------------------------------------------------------------
 -- CONFIGURATION  — tune everything here, no magic numbers below.
