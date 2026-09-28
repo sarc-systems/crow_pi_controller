@@ -29,8 +29,8 @@ This is not intended as a conventional one-output PID controller with four selec
 
 Let:
 
-    measurement = input[1]
-    setpoint    = input[2]
+    setpoint    = input[1]
+    measurement = input[2]
     error       = setpoint - measurement
 
 The sign convention must be easy to reverse globally because some analog destinations may have inverted response.
@@ -186,11 +186,11 @@ They will initially run identical code:
 
 Typical patch:
 
-    analog output/recombined activity
-        -> envelope follower
+    Touché loudness setpoint
         -> Crow IN 1
 
-    Touché loudness setpoint
+    analog output/recombined activity
+        -> envelope follower
         -> Crow IN 2
 
     Crow OUT 1–4
@@ -209,10 +209,10 @@ Exact destinations are deliberately NOT fixed.
 
 Typical patch:
 
-    spectral/brightness detector
+    Touché brightness setpoint
         -> Crow IN 1
 
-    Touché brightness setpoint
+    spectral/brightness detector
         -> Crow IN 2
 
     Crow OUT 1–4
@@ -322,8 +322,8 @@ The final time constants and gains will be determined empirically.
 
 Produce one Crow Lua script implementing:
 
-    IN 1 = measurement
-    IN 2 = setpoint
+    IN 1 = setpoint
+    IN 2 = measurement
 
     OUT 1 = effectively instantaneous proportional error
     OUT 2 = short temporal PI/history
