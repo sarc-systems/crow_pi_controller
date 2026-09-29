@@ -22,6 +22,12 @@
 -- CONFIGURATION  — tune everything here, no magic numbers below.
 ---------------------------------------------------------------------
 
+-- Timescale ladder for OUT 2-4. The three layers are spaced by a single log
+-- base: short : medium : long = 1 : base : base^2. Lower base = layers closer
+-- together and the long layer faster; higher base = wider separation.
+local TAU_SHORT = 0.5   -- shortest integration timescale, seconds
+local TAU_BASE  = 6     -- ratio between consecutive layers
+
 local CFG = {
   ---- control loop ----
   dt = 0.01,             -- loop interval, seconds (100 Hz). Used in integration.
@@ -42,11 +48,13 @@ local CFG = {
 
   ---- OUT 2-4 : temporal PI layers ----
   -- Integration timescale in seconds per layer; Ki is derived as 1/tau.
-  -- Keep these widely / logarithmically separated (~1:10:100).
-  tau = { short = 0.5, medium = 5.0, long = 50.0 },
+  -- Spaced by TAU_BASE above (short : medium : long = 1 : base : base^2).
+  tau = { short  = TAU_SHORT,
+          medium = TAU_SHORT * TAU_BASE,
+          long   = TAU_SHORT * TAU_BASE^2 },
   -- Proportional part of each layer. Set a layer to 0 to make that output
   -- purely integrated / low-passed history.
-  kp  = { short = 0.5, medium = 0.5, long = 0.5 },
+  kp  = { short = 0.5, medium = 0.6, long = 0.7 },
 
   ---- output stage ----
   out_min = -5.0,        -- conservative safe range (Crow hardware max is +/-10)
@@ -55,7 +63,10 @@ local CFG = {
   out_pol = { 1,   1,   1,   1   },  -- per-output polarity  (+1 / -1)
 
   ---- anti-windup ----
-  i_clamp       = 10.0,  -- bound on each integral state (integrator units)
+  -- Bound on each integral term's CONTRIBUTION in volts (ki*I), NOT the raw
+  -- state. This gives every layer equal authority regardless of tau; set it to
+  -- the output range so an integrator alone can drive the output full-scale.
+  i_authority   = 5.0,
   stop_when_sat = true,  -- also stop integrating further into a saturated output
 }
 
@@ -121,7 +132,8 @@ local function pi_layer(ch, key, e)
     local blocked = CFG.stop_when_sat and
         ((sat_hi[ch] and eff * dI > 0) or (sat_lo[ch] and eff * dI < 0))
     if not blocked then
-      I[key] = clamp(I[key] + dI, -CFG.i_clamp, CFG.i_clamp)
+      local i_max = CFG.i_authority / ki   -- bound the contribution ki*I, not I
+      I[key] = clamp(I[key] + dI, -i_max, i_max)
     end
   end
 
