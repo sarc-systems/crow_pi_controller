@@ -102,6 +102,8 @@ These are NOT final specifications. They must be exposed as constants near the t
 
 A useful initial ratio is roughly 1:10:100.
 
+**As built (current):** the three timescales are derived from a single log-base knob, `TAU_BASE`, with `short : medium : long = 1 : base : base^2` (plus `TAU_SHORT` for the shortest layer). Current working values: `TAU_SHORT = 0.5`, `TAU_BASE = 6` → `{0.5, 3, 18} s`. The low-passed-error alternative above is implemented and is the default: each layer is a **leaky integrator** (`CFG.leaky = true`), so with the error at zero every output relaxes to zero over its own tau instead of holding a wound-up value. Set `CFG.leaky = false` for pure (non-leaking) PI integration. These remain tuning values, not final specs.
+
 ---
 
 ## Output behavior
@@ -132,6 +134,8 @@ Preferred first approach:
 - optionally stop integrating farther in the saturated direction when its corresponding output is at its voltage limit
 
 Keep this implementation transparent. Avoid elaborate control-engineering machinery unless testing demonstrates a need.
+
+**As built (current):** the clamp is expressed as an integral *authority in volts* (`CFG.i_authority`, default 5.0) applied to each layer's contribution `ki * I`, rather than as a raw bound on `I`. Because `ki = 1/tau` differs by orders of magnitude across the layers, a shared raw bound would give the layers wildly unequal authority (the long layer could barely move); clamping the contribution gives every layer equal full-scale reach regardless of tau. Stop-integrating-when-saturated is implemented via `CFG.stop_when_sat` (default true). With `CFG.leaky` on, the leak itself also bounds wind-up.
 
 ---
 
@@ -295,6 +299,18 @@ Keep these together near the top of the script:
 - per-output polarity
 - integral clamps
 - optional fast-output smoothing
+
+**As built (current)**, all of these live in the `CFG` table (plus `TAU_SHORT`/`TAU_BASE`) at the top of `pi_controller.lua`:
+
+- `dt` — control-loop interval
+- `polarity` — global error sign; `swap_inputs` — swap IN1/IN2 in software
+- `meas_gain/offset`, `set_gain/offset` — input conditioning
+- `deadband`
+- `kp_fast`, `fast_smooth` — OUT 1 proportional gain and optional smoothing
+- `TAU_SHORT`, `TAU_BASE` — the timescale ladder for OUT 2–4
+- `kp` — per-layer proportional part; `leaky` — leaky vs. pure integration
+- `out_min`/`out_max`, `gain[1..4]`, `out_pol[1..4]` — output stage
+- `i_authority`, `stop_when_sat` — anti-windup
 
 Do not scatter magic numbers through the program.
 
