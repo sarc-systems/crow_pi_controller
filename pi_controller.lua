@@ -55,6 +55,12 @@ local CFG = {
   -- Proportional part of each layer. Set a layer to 0 to make that output
   -- purely integrated / low-passed history.
   kp  = { short = 0.5, medium = 0.6, long = 0.7 },
+  -- Integrator memory. true: each layer LEAKS, relaxing to zero over its own
+  -- tau when the error disappears, so outputs return to rest when you let go
+  -- (each output becomes a low-pass of the error over its timescale). false:
+  -- pure integrators that hold indefinitely -- they can null a steady error
+  -- but stay put at zero error, which is why released outputs get "stuck".
+  leaky = true,
 
   ---- output stage ----
   out_min = -5.0,        -- conservative safe range (Crow hardware max is +/-10)
@@ -127,8 +133,11 @@ local function pi_layer(ch, key, e)
 
   -- Integrate, with conditional anti-windup.
   if not FREEZE then
-    local dI  = e * CFG.dt
-    local eff = pol * g * ki               -- sign of how a rise in I moves output
+    -- Leaky option subtracts 1/tau of the current state each step, so at zero
+    -- error the layer decays to zero over ~tau (first-order low-pass of e).
+    local leak = CFG.leaky and (I[key] * ki) or 0.0
+    local dI   = (e - leak) * CFG.dt
+    local eff  = pol * g * ki              -- sign of how a rise in I moves output
     local blocked = CFG.stop_when_sat and
         ((sat_hi[ch] and eff * dI > 0) or (sat_lo[ch] and eff * dI < 0))
     if not blocked then
